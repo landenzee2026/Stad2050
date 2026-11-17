@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mijn stad in 2050 (versie 4)</title>
+<style>
+  /* ===== OPMAAK (kleuren, lettertype, plaats van onderdelen) ===== */
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #eef3ee;
+    color: #222;
+    margin: 0;
+    padding: 16px;
+  }
+  h1 { margin: 0 0 4px 0; font-size: 26px; }
+  .uitleg { margin: 0 0 12px 0; color: #555; }
+
+  /* De drie meters bovenaan */
+  .meters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .meter { background: white; border: 2px solid #ddd; border-radius: 8px; padding: 6px 12px; min-width: 150px; }
+  .meter .label { font-size: 14px; color: #555; }
+  .meter .waarde { font-size: 22px; font-weight: bold; }
+  .meter .toelichting { font-size: 13px; color: #666; }
+  .meter.gehaald { border-color: #2b8a3e; background: #ebfbee; }
+  .meter .doel { font-size: 13px; font-weight: bold; margin-top: 2px; }
+  .opdracht { background: #e7f5ff; border: 2px solid #74c0fc; border-radius: 8px; padding: 10px 14px;
+              margin-bottom: 12px; line-height: 1.45; }
+  .klaarknop { padding: 10px 14px; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+               border: 2px solid #2b8a3e; background: #2b8a3e; color: white; width: 100%; }
+  .vak .auto { position: absolute; bottom: -3px; left: 1px; font-size: 12px; }
+  /* Eindscherm */
+  .scherm { position: fixed; inset: 0; background: #0008; display: none; align-items: center; justify-content: center; padding: 16px; }
+  .scherm.open { display: flex; }
+  .scherm .kaart { background: white; border-radius: 12px; padding: 20px 24px; max-width: 620px; width: 100%;
+                   max-height: 90vh; overflow-y: auto; line-height: 1.45; }
+  .scherm h2 { margin-top: 0; }
+  .scherm li { margin-bottom: 6px; }
+  .sterren { font-size: 32px; margin: 4px 0 10px 0; }
+  .goed { color: #2b8a3e; }
+  .slecht { color: #c92a2a; }
+
+  .spel { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+
+  /* Knoppenbalk met bouwstenen */
+  .knoppen { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 300px; align-content: start; }
+  .knoppen .groepkop { grid-column: 1 / -1; }
+  .rechts { display: flex; flex-direction: column; gap: 12px; width: 260px; }
+  .groepkop { font-size: 12px; font-weight: bold; color: #555; margin: 4px 0 0 2px; text-transform: uppercase; }
+  .knop {
+    display: flex; align-items: center; gap: 10px;
+    padding: 4px 6px; font-size: 13px; gap: 6px; line-height: 1.15;
+    border: 2px solid #bbb; border-radius: 8px;
+    background: white; cursor: pointer; text-align: left;
+  }
+  .knop:hover { border-color: #666; }
+  .knop.gekozen { border-color: #1a73e8; background: #e3eefc; font-weight: bold; }
+  .kleurvak { width: 22px; height: 22px; border-radius: 4px; border: 1px solid #0003;
+              display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+
+  /* Uitlegvak onder de knoppen */
+  .infovak { background: #fffbe6; border: 2px solid #f0d878; border-radius: 8px; padding: 10px;
+             font-size: 14px; line-height: 1.4; min-height: 90px; }
+  .infovak b { display: block; margin-bottom: 4px; }
+
+  /* Het raster (de stad) */
+  .raster {
+    display: grid;
+    gap: 2px;
+    background: #9bb59b;
+    padding: 2px;
+    border-radius: 6px;
+    user-select: none;
+  }
+  .vak {
+    position: relative;
+    background: #cfe3c4;           /* lege grond */
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; cursor: pointer;
+  }
+  .vak:hover { outline: 2px solid #1a73e8; outline-offset: -2px; }
+  .vak.groendak { box-shadow: inset 0 0 0 4px #2f9e44; }   /* groene rand = groen dak */
+  .vak .zon { position: absolute; top: -2px; right: 0; font-size: 13px; }
+
+  /* Teller */
+  .teller { background: white; border-radius: 8px; padding: 12px 16px;
+            border: 2px solid #ddd; }
+  .teller h2 { margin: 0 0 8px 0; font-size: 18px; }
+  .teller table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  .teller td { padding: 3px 2px; }
+  .teller td.getal { text-align: right; font-weight: bold; }
+  .wissen { margin-top: 12px; padding: 8px 10px; border-radius: 6px; border: 1px solid #c55;
+            background: #fff0f0; color: #a22; cursor: pointer; width: 100%; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<h1>Mijn stad in 2050</h1>
+<div class="opdracht">
+  <b>Jouw opdracht:</b> het is 2050. Je bent wethouder en richt een nieuwe stad in.
+  Haal de vier doelen hieronder. Probeer ook de twee bonussen te halen. Je hebt ongeveer <b>30 minuten</b>.<br>
+  <b>Zo werkt het:</b> kies links een bouwsteen en klik op een vakje. Houd de muis ingedrukt om meerdere vakjes te vullen.
+  Zonnepanelen en een groen dak zet je <b>op</b> een gebouw. Klaar? Klik rechts op <b>Controleer mijn stad</b>.
+</div>
+
+<div class="meters">
+  <div class="meter" id="kInwoners"><div class="label">👥 Inwoners</div><div class="waarde" id="mInwoners">0</div>
+    <div class="doel" id="dInwoners"></div></div>
+  <div class="meter" id="kEnergie"><div class="label">⚡ Energie</div><div class="waarde" id="mEnergie">0</div>
+    <div class="doel" id="dEnergie"></div></div>
+  <div class="meter" id="kGroen"><div class="label">🌳 Groen</div><div class="waarde" id="mGroen">0%</div>
+    <div class="doel" id="dGroen"></div></div>
+  <div class="meter" id="kBetaalbaar"><div class="label">💶 Betaalbaar wonen</div><div class="waarde" id="mBetaalbaar">0%</div>
+    <div class="doel" id="dBetaalbaar"></div></div>
+  <div class="meter" id="kDichtbij"><div class="label">🚶 Dichtbij werk</div><div class="waarde" id="mDichtbij">0%</div>
+    <div class="doel" id="dDichtbij"></div></div>
+  <div class="meter" id="kVoedsel"><div class="label">🥬 Eigen voedsel</div><div class="waarde" id="mVoedsel">0%</div>
+    <div class="doel" id="dVoedsel"></div></div>
+</div>
+
+<div class="spel">
+  <div class="knoppen" id="knoppen"></div>
+  <div class="raster" id="raster"></div>
+  <div class="rechts">
+  <button class="klaarknop" id="klaar">✅ Controleer mijn stad</button>
+  <div class="infovak" id="infovak"></div>
+  <div class="teller">
+    <h2>Wat staat er in je stad?</h2>
+    <table id="tellerTabel"></table>
+    <button class="wissen" id="wisAlles">Hele stad leegmaken</button>
+  </div>
+  </div>
+</div>
+
+<div class="scherm" id="scherm"><div class="kaart" id="schermInhoud"></div></div>
+
+<script>
+// ===== INSTELLINGEN: HIER KUN JE DINGEN AANPASSEN =====
+
+// Grootte van de stad (aantal vakjes in de breedte en de hoogte)
+const GROOTTE = 12;
+
+// De doelen van het spel
+const DOELEN = {
+  inwoners: 50000,   // minstens zoveel inwoners
+  energie: 0,        // energie moet minstens 0 zijn (niet in de min)
+  groen: 20,         // minstens zoveel procent groen
+  betaalbaar: 30,    // minstens zoveel procent van de inwoners woont in een sociale huurwoning
+  voedsel: 20,       // BONUS: minstens zoveel procent van de inwoners eet groente uit een vertical farm
+  dichtbij: 75       // BONUS: minstens zoveel procent van de woonvakjes dicht bij werk of voorziening
+};
+
+// Voor hoeveel inwoners maakt één vertical farm groente?
+const VOEDSEL_PER_FARM = 5000;
+
+// Hoe ver is "dichtbij"? (aantal vakjes in elke richting, ook schuin)
+const AFSTAND_DICHTBIJ = 2;
+
+// De bouwstenen.
+//  soort:    "gebouw" = staat op een leeg vakje, "extra" = zet je OP een gebouw, "gum" = weghalen
+//  groep:    onder welk kopje de knop staat
+//  inwoners: hoeveel mensen er wonen (per vakje)
+//  energie:  plus = wekt stroom op, min = gebruikt stroom
+//  groen:    1 = helemaal groen, 0.5 = half groen
+//  uitleg:   de tekst die leerlingen zien als ze de knop kiezen
+const BOUWSTENEN = [
+  { id: "woning", groep: "Wonen", soort: "gebouw", naam: "Eengezinswoningen", kleur: "#f4a261", icoon: "🏠",
+    inwoners: 500, energie: -1, groen: 0,
+    uitleg: "Huizen met een tuin. Veel mensen willen zo wonen, maar het kost veel ruimte en de huizen zijn duur. 1 vakje = 500 inwoners." },
+  { id: "appartement", groep: "Wonen", soort: "gebouw", naam: "Appartementen", kleur: "#e76f51", icoon: "🏢",
+    inwoners: 2000, energie: -3, groen: 0,
+    uitleg: "Hoogbouw: veel mensen op weinig ruimte. Dit heet <i>verdichting</i> en past bij het <i>compactestadbeleid</i>. Dit zijn dure koop- en huurwoningen. 1 vakje = 2000 inwoners." },
+  { id: "sociaal", groep: "Wonen", soort: "gebouw", naam: "Sociale huurwoningen", kleur: "#f783ac", icoon: "🏘️",
+    inwoners: 1500, energie: -2, groen: 0,
+    uitleg: "Betaalbare huurwoningen voor mensen met een laag of gemiddeld inkomen, zoals gezinnen en starters. Zonder deze woningen kunnen zij niet in de stad wonen. 1 vakje = 1500 inwoners." },
+
+  { id: "bedrijf", groep: "Werken en voorzieningen", soort: "gebouw", naam: "Bedrijf", kleur: "#8d99ae", icoon: "🏭",
+    inwoners: 0, energie: -4, groen: 0,
+    uitleg: "Hier werken mensen. Bedrijven gebruiken veel energie." },
+  { id: "voorziening", groep: "Werken en voorzieningen", soort: "gebouw", naam: "Voorziening", kleur: "#e9c46a", icoon: "🏫",
+    inwoners: 0, energie: -2, groen: 0,
+    uitleg: "School, winkel, ziekenhuis of sporthal. Inwoners willen voorzieningen dichtbij." },
+  { id: "farm", groep: "Werken en voorzieningen", soort: "gebouw", naam: "Vertical farm", kleur: "#94d82d", icoon: "🥬",
+    inwoners: 0, energie: -5, groen: 0,
+    uitleg: "Een gebouw waarin groente in lagen boven elkaar groeit, met ledlampen. Het kost weinig ruimte en geen bestrijdingsmiddelen, maar wel veel stroom. 1 farm = groente voor 5000 inwoners. <b>Regel:</b> zet hem naast een bedrijf, op het bedrijventerrein." },
+
+  { id: "groen", groep: "Groen", soort: "gebouw", naam: "Park / groen", kleur: "#52b788", icoon: "🌳",
+    inwoners: 0, energie: 0, groen: 1,
+    uitleg: "Groen koelt de stad bij hitte (minder <i>hittestress</i>) en vangt regenwater op (minder <i>wateroverlast</i>)." },
+
+  { id: "weg", groep: "Verkeer", soort: "gebouw", naam: "Weg", kleur: "#6c757d", icoon: "",
+    inwoners: 0, energie: 0, groen: 0,
+    uitleg: "Wegen verbinden wijken met elkaar." },
+  { id: "ov", groep: "Verkeer", soort: "gebouw", naam: "Ov-halte", kleur: "#4dabf7", icoon: "🚉",
+    inwoners: 0, energie: -1, groen: 0,
+    uitleg: "Halte voor tram, bus of trein. Met goed openbaar vervoer hebben mensen minder vaak een auto nodig." },
+  { id: "laadstation", groep: "Verkeer", soort: "gebouw", naam: "Laadstation", kleur: "#74c0fc", icoon: "🔌",
+    inwoners: 0, energie: -2, groen: 0,
+    uitleg: "Hier laden elektrische auto's en deelauto's op. Geen uitlaatgassen, maar het kost wel stroom." },
+
+  { id: "windmolen", groep: "Duurzame energie", soort: "gebouw", naam: "Windmolen", kleur: "#dee2e6", icoon: "💨",
+    inwoners: 0, energie: 20, groen: 0,
+    uitleg: "Wekt veel stroom op zonder CO₂-uitstoot. Nadeel: een windmolen is hoog en maakt geluid. <b>Regel:</b> een windmolen mag niet direct naast woningen of appartementen staan." },
+  { id: "zonnepanelen", groep: "Duurzame energie", soort: "extra", naam: "Zonnepanelen (op dak)", kleur: "#ffe066", icoon: "☀️",
+    energie: 2, groen: 0,
+    uitleg: "Klik op een gebouw om er zonnepanelen op te leggen. Het gebouw wekt dan zelf stroom op." },
+  { id: "groendak", groep: "Duurzame energie", soort: "extra", naam: "Groen dak", kleur: "#2f9e44", icoon: "🌿",
+    energie: 0, groen: 0.5,
+    uitleg: "Klik op een gebouw om er planten op het dak te zetten. Een groen dak vangt regenwater op en koelt bij hitte." },
+
+  { id: "gum", groep: "Gereedschap", soort: "gum", naam: "Gum (weghalen)", kleur: "#ffffff", icoon: "🧽",
+    uitleg: "Klik op een vakje om alles weg te halen. Klik je op een gebouw met zonnepanelen of een groen dak? Dan gaat alles weg." }
+];
+
+// ===== VANAF HIER: DE WERKING VAN HET SPEL =====
+
+// De stad wordt bewaard als een lijst. Per vakje staat er:
+//   null (leeg)  of  { id: "woning", zon: true/false, dak: true/false }
+let stad = new Array(GROOTTE * GROOTTE).fill(null);
+let gekozen = "woning";
+let muisIngedrukt = false;
+
+const knoppenDiv  = document.getElementById("knoppen");
+const rasterDiv   = document.getElementById("raster");
+const tellerTabel = document.getElementById("tellerTabel");
+const infovak     = document.getElementById("infovak");
+
+function zoekBouwsteen(id) {
+  return BOUWSTENEN.find(b => b.id === id);
+}
+
+// Op welke gebouwen mogen zonnepanelen en een groen dak?
+const DAKEN = ["woning", "appartement", "sociaal", "bedrijf", "voorziening", "farm", "ov"];
+
+// Welke bouwstenen zijn wonen, en welke zijn werk of voorziening?
+const WONEN = ["woning", "appartement", "sociaal"];
+const WERK_VOORZIENING = ["bedrijf", "voorziening", "farm"];
+
+// Kijkt of er rond vakje 'nummer' (binnen 'afstand' vakjes) een van de 'soorten' staat
+function buurHeeft(nummer, soorten, afstand) {
+  const rij = Math.floor(nummer / GROOTTE), kol = nummer % GROOTTE;
+  for (let r = rij - afstand; r <= rij + afstand; r++) {
+    for (let k = kol - afstand; k <= kol + afstand; k++) {
+      if (r < 0 || k < 0 || r >= GROOTTE || k >= GROOTTE) continue;
+      if (r === rij && k === kol) continue;
+      const v = stad[r * GROOTTE + k];
+      if (v && soorten.includes(v.id)) return true;
+    }
+  }
+  return false;
+}
+
+function isDichtbij(nummer) {
+  return buurHeeft(nummer, WERK_VOORZIENING, AFSTAND_DICHTBIJ);
+}
+
+// 1. Maak de knoppen, met een kopje per groep
+let vorigeGroep = "";
+BOUWSTENEN.forEach(b => {
+  if (b.groep !== vorigeGroep) {
+    const kop = document.createElement("div");
+    kop.className = "groepkop";
+    kop.textContent = b.groep;
+    knoppenDiv.appendChild(kop);
+    vorigeGroep = b.groep;
+  }
+  const knop = document.createElement("button");
+  knop.className = "knop";
+  knop.dataset.id = b.id;
+  knop.innerHTML = `<span class="kleurvak" style="background:${b.kleur}">${b.icoon}</span>${b.naam}`;
+  knop.onclick = () => { gekozen = b.id; tekenKnoppen(); };
+  knop.style.width = "100%";
+  knoppenDiv.appendChild(knop);
+});
+
+function tekenKnoppen() {
+  document.querySelectorAll(".knop").forEach(k => {
+    k.classList.toggle("gekozen", k.dataset.id === gekozen);
+  });
+  toonUitleg(gekozen);
+}
+
+function toonUitleg(id, melding) {
+  const b = zoekBouwsteen(id);
+  let html = `<b>${b.icoon} ${b.naam}</b>${b.uitleg}`;
+  if (melding) html += `<br><br><span class="slecht">${melding}</span>`;
+  infovak.innerHTML = html;
+}
+
+// 2. Maak het raster
+rasterDiv.style.gridTemplateColumns = `repeat(${GROOTTE}, 40px)`;
+rasterDiv.style.gridTemplateRows    = `repeat(${GROOTTE}, 40px)`;
+for (let i = 0; i < GROOTTE * GROOTTE; i++) {
+  const vak = document.createElement("div");
+  vak.className = "vak";
+  vak.addEventListener("mousedown", () => { muisIngedrukt = true; plaats(i); });
+  vak.addEventListener("mouseenter", () => { if (muisIngedrukt) plaats(i); });
+  rasterDiv.appendChild(vak);
+}
+document.addEventListener("mouseup", () => { muisIngedrukt = false; });
+
+// 3. Plaats de gekozen bouwsteen op een vakje
+function plaats(nummer) {
+  const b = zoekBouwsteen(gekozen);
+  const vak = stad[nummer];
+
+  if (b.soort === "gum") {
+    stad[nummer] = null;
+  } else if (b.soort === "gebouw") {
+    // REGEL: geen windmolen direct naast woningen (geluidsoverlast)
+    if (b.id === "windmolen" && buurHeeft(nummer, WONEN, 1)) {
+      toonUitleg(gekozen, "Dit mag niet: hier staan woningen naast. Mensen hebben last van het geluid. Zet de windmolen verder weg.");
+      return;
+    }
+    if (WONEN.includes(b.id) && buurHeeft(nummer, ["windmolen"], 1)) {
+      toonUitleg(gekozen, "Dit mag niet: hier staat een windmolen naast. Bewoners hebben dan last van het geluid.");
+      return;
+    }
+    // REGEL: een vertical farm hoort op het bedrijventerrein, dus naast een bedrijf
+    if (b.id === "farm" && !buurHeeft(nummer, ["bedrijf"], 1)) {
+      toonUitleg(gekozen, "Dit mag niet: een vertical farm moet naast een bedrijf staan (op het bedrijventerrein). Zet eerst een bedrijf neer.");
+      return;
+    }
+    stad[nummer] = { id: b.id, zon: false, dak: false };
+  } else if (b.soort === "extra") {
+    // Zonnepanelen en groen dak kunnen alleen op een gebouw
+    if (!vak || !DAKEN.includes(vak.id)) {
+      toonUitleg(gekozen, "Dit kan alleen op een gebouw, niet op een park, weg, laadstation of windmolen.");
+      return;
+    }
+    if (b.id === "zonnepanelen") vak.zon = true;
+    if (b.id === "groendak")     vak.dak = true;
+  }
+  tekenStad();
+}
+
+// 4. Teken de stad opnieuw en werk meters en teller bij
+function tekenStad() {
+  const vakken = rasterDiv.children;
+  for (let i = 0; i < stad.length; i++) {
+    const v = stad[i];
+    const b = v ? zoekBouwsteen(v.id) : null;
+    const vak = vakken[i];
+    vak.style.background = b ? b.kleur : "";
+    vak.innerHTML = b ? b.icoon : "";
+    vak.classList.toggle("groendak", !!(v && v.dak));
+    if (v && v.zon) vak.innerHTML += `<span class="zon">☀️</span>`;
+    // Woning ver van werk en voorzieningen? Dan is een auto nodig: toon een autootje
+    const ver = v && WONEN.includes(v.id) && !isDichtbij(i);
+    if (ver) vak.innerHTML += `<span class="auto">🚗</span>`;
+    let titel = b ? b.naam : "Lege grond";
+    if (v && v.zon) titel += " + zonnepanelen";
+    if (v && v.dak) titel += " + groen dak";
+    if (ver) titel += " (ver van werk en voorzieningen: bewoners pakken de auto)";
+    vak.title = titel;
+  }
+  tekenMeters();
+  tekenTeller();
+}
+
+function berekenScores() {
+  let inwoners = 0, energie = 0, groen = 0, woonvakjes = 0, dichtbij = 0, sociaal = 0, farms = 0;
+  stad.forEach(v => {
+    if (!v) return;
+    const b = zoekBouwsteen(v.id);
+    inwoners += b.inwoners;
+    if (v.id === "sociaal") sociaal += b.inwoners;
+    if (v.id === "farm") farms++;
+    energie  += b.energie;
+    groen    += b.groen;
+    if (v.zon) energie += zoekBouwsteen("zonnepanelen").energie;
+    if (v.dak) groen   += zoekBouwsteen("groendak").groen;
+  });
+  stad.forEach((v, i) => {
+    if (v && WONEN.includes(v.id)) { woonvakjes++; if (isDichtbij(i)) dichtbij++; }
+  });
+  return {
+    inwoners: inwoners,
+    energie: energie,
+    groen: Math.round(groen / stad.length * 100),
+    dichtbij: woonvakjes ? Math.round(dichtbij / woonvakjes * 100) : 0,
+    betaalbaar: inwoners ? Math.round(sociaal / inwoners * 100) : 0,
+    voedsel: inwoners ? Math.min(100, Math.round(farms * VOEDSEL_PER_FARM / inwoners * 100)) : 0
+  };
+}
+
+function doelGehaald(s) {
+  return {
+    inwoners: s.inwoners >= DOELEN.inwoners,
+    energie:  s.energie  >= DOELEN.energie,
+    groen:    s.groen    >= DOELEN.groen,
+    betaalbaar: s.betaalbaar >= DOELEN.betaalbaar,
+    dichtbij: s.dichtbij >= DOELEN.dichtbij,
+    voedsel:  s.voedsel  >= DOELEN.voedsel
+  };
+}
+
+function tekenMeters() {
+  const s = berekenScores();
+  const g = doelGehaald(s);
+  const inwoners = s.inwoners, energie = s.energie, groenProcent = s.groen;
+
+  document.getElementById("mInwoners").textContent = inwoners.toLocaleString("nl-NL");
+
+  const e = document.getElementById("mEnergie");
+  e.textContent = (energie > 0 ? "+" : "") + energie;
+  e.className = "waarde " + (energie >= 0 ? "goed" : "slecht");
+  document.getElementById("mGroen").textContent = groenProcent + "%";
+  document.getElementById("mDichtbij").textContent = s.dichtbij + "%";
+  document.getElementById("mBetaalbaar").textContent = s.betaalbaar + "%";
+  document.getElementById("mVoedsel").textContent = s.voedsel + "%";
+
+  const vink = ok => ok ? "✅ " : "⬜ ";
+  document.getElementById("dInwoners").textContent = vink(g.inwoners) + "doel: " + DOELEN.inwoners.toLocaleString("nl-NL") + " of meer";
+  document.getElementById("dEnergie").textContent  = vink(g.energie)  + "doel: " + DOELEN.energie + " of meer";
+  document.getElementById("dGroen").textContent    = vink(g.groen)    + "doel: " + DOELEN.groen + "% of meer";
+  document.getElementById("dBetaalbaar").textContent = vink(g.betaalbaar) + "doel: " + DOELEN.betaalbaar + "% sociale huur";
+  document.getElementById("dDichtbij").textContent = vink(g.dichtbij) + "bonus: " + DOELEN.dichtbij + "% of meer";
+  document.getElementById("dVoedsel").textContent  = vink(g.voedsel)  + "bonus: " + DOELEN.voedsel + "% of meer";
+  ["Inwoners", "Energie", "Groen", "Betaalbaar", "Dichtbij", "Voedsel"].forEach(n =>
+    document.getElementById("k" + n).classList.toggle("gehaald", g[n.toLowerCase()]));
+}
+
+function tekenTeller() {
+  let html = "";
+  BOUWSTENEN.filter(b => b.soort === "gebouw").forEach(b => {
+    const aantal = stad.filter(v => v && v.id === b.id).length;
+    html += `<tr><td>${b.icoon || "▬"} ${b.naam}</td><td class="getal">${aantal}</td></tr>`;
+  });
+  const zon = stad.filter(v => v && v.zon).length;
+  const dak = stad.filter(v => v && v.dak).length;
+  html += `<tr><td>☀️ Zonnepanelen</td><td class="getal">${zon}</td></tr>`;
+  html += `<tr><td>🌿 Groene daken</td><td class="getal">${dak}</td></tr>`;
+  const leeg = stad.filter(v => v === null).length;
+  html += `<tr><td>⬜ Lege grond</td><td class="getal">${leeg}</td></tr>`;
+  tellerTabel.innerHTML = html;
+}
+
+// 5. Knop om alles te wissen
+document.getElementById("wisAlles").onclick = () => {
+  if (confirm("Weet je zeker dat je de hele stad wilt leegmaken?")) {
+    stad.fill(null);
+    tekenStad();
+  }
+};
+
+// 6. Eindcontrole: heeft de leerling de doelen gehaald?
+document.getElementById("klaar").onclick = () => {
+  const s = berekenScores();
+  const g = doelGehaald(s);
+  const aantal = [g.inwoners, g.energie, g.groen, g.betaalbaar].filter(x => x).length;
+  const bonus  = [g.dichtbij, g.voedsel].filter(x => x).length;
+  const sterren = "⭐".repeat(aantal + bonus) + "☆".repeat(6 - aantal - bonus);
+  const regel = (ok, tekst, tip) => `<li>${ok ? "✅" : "❌"} ${tekst}${ok ? "" : `<br><i>Tip: ${tip}</i>`}</li>`;
+
+  let html = aantal === 4
+    ? `<h2>🎉 Gefeliciteerd, je stad is klaar voor 2050!</h2>`
+    : `<h2>Je stad is nog niet klaar voor 2050</h2>`;
+  html += `<div class="sterren">${sterren}</div><ul>`;
+  html += regel(g.inwoners, `Inwoners: ${s.inwoners.toLocaleString("nl-NL")} (doel ${DOELEN.inwoners.toLocaleString("nl-NL")})`,
+                "bouw de hoogte in met appartementen. Zo huisvest je veel mensen op weinig ruimte (verdichting).");
+  html += regel(g.energie, `Energie: ${s.energie} (doel ${DOELEN.energie} of meer)`,
+                "leg zonnepanelen op daken of zet windmolens op een plek zonder woningen ernaast.");
+  html += regel(g.groen, `Groen: ${s.groen}% (doel ${DOELEN.groen}%)`,
+                "maak parken of geef gebouwen een groen dak.");
+  html += regel(g.betaalbaar, `Betaalbaar wonen: ${s.betaalbaar}% van de inwoners woont in sociale huur (doel ${DOELEN.betaalbaar}%)`,
+                "bouw sociale huurwoningen, zodat ook gezinnen en starters met een lager inkomen in de stad kunnen wonen.");
+  html += regel(g.dichtbij, `Bonus, wonen dichtbij werk en voorzieningen: ${s.dichtbij}% (doel ${DOELEN.dichtbij}%)`,
+                "meng functies: zet bedrijven en voorzieningen tussen de woningen. Let op de autootjes 🚗.");
+  html += regel(g.voedsel, `Bonus, eigen voedsel uit vertical farms: ${s.voedsel}% (doel ${DOELEN.voedsel}%)`,
+                "zet vertical farms naast bedrijven. Elke farm maakt groente voor 5000 inwoners.");
+  html += `</ul>`;
+  if (aantal === 4) {
+    html += `<h3>Nabespreking: beantwoord op papier</h3><ol>
+      <li>Hoe heb je ervoor gezorgd dat er genoeg mensen in je stad kunnen wonen? Gebruik het begrip <b>verdichting</b>.</li>
+      <li>Kies één duurzame maatregel uit jouw stad. Welk probleem lost die op?</li>
+      <li>Voor welke groepen mensen zijn sociale huurwoningen belangrijk? Wat gebeurt er met deze groepen als er te weinig van zijn?</li></ol>`;
+  }
+  html += `<button class="klaarknop" id="sluit">${aantal === 4 ? "Terug naar mijn stad" : "Verder bouwen"}</button>`;
+  document.getElementById("schermInhoud").innerHTML = html;
+  document.getElementById("scherm").classList.add("open");
+  document.getElementById("sluit").onclick = () => document.getElementById("scherm").classList.remove("open");
+};
+
+// Start
+tekenKnoppen();
+tekenStad();
+</script>
+</body>
+</html>
